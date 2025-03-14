@@ -140,40 +140,13 @@ def view_responses():
 
 
 # === [ ROUTE: View Specific Response ] ===
-@app.route('/view_response/<filename>', methods=['GET'])
-def view_response(filename):
-    try:
-        with open(os.path.join(RESPONSES_DIR, filename), 'r') as f:
-            data = json.load(f)
-
-        # Format JSON for display
-        formatted_json = json.dumps(data, indent=2)
-
-        # Render JSON details as HTML
-        return render_template_string('''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Response Details</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
-                .back-button { margin-bottom: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class="back-button">
-                <a href="/view_responses">← Back to All Responses</a>
-            </div>
-            <h1>Response Details - {{ filename }}</h1>
-            <pre>{{ formatted_json }}</pre>
-        </body>
-        </html>
-        ''', filename=filename, formatted_json=formatted_json)
-
-    except Exception as e:
-        logging.error(f"❌ Error viewing response details: {str(e)}")
-        return f"Error: {str(e)}", 500
+@app.route("/view_responses", methods=["GET"])
+def view_responses():
+    print("📌 Debug: Fetching stored responses...")  # Debugging print
+    with open("responses.json", "r") as f:
+        data = f.read()
+        print("📌 Debug: Data from file ->", data)  # Print data for debugging
+    return jsonify(json.loads(data))
     
 @app.route("/")
 def home():
