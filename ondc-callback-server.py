@@ -15,25 +15,28 @@ RESPONSES_DIR = "received_responses"
 os.makedirs(RESPONSES_DIR, exist_ok=True)
 
 # Load configuration
-with open("config.json", "r") as config_file:
-    config = json.load(config_file)
+try:
+    with open("config.json", "r") as config_file:
+        config = json.load(config_file)
+    bap_uri = config.get('bap_uri', '')
+except Exception as e:
+    logging.error(f"❌ Error loading config.json: {e}")
+    bap_uri = ""
 
-# Extract BAP URI for display
-bap_uri = config.get('bap_uri', '')
 domain = bap_uri.replace('https://', '').replace('http://', '').split('/')[0]
 
 # === [ ROUTE: Handle on_search Responses ] ===
 @app.route('/on_search', methods=['POST'])
 def on_search():
     try:
-        # Get JSON request data
         request_data = request.get_json()
-
-        # Extract transaction ID
         transaction_id = request_data.get('context', {}).get('transaction_id', 'unknown')
 
-        # Log receipt of response
         logging.info(f"📥 Received on_search response for transaction: {transaction_id}")
+
+        # Ensure the request contains valid JSON
+        if not request_data:
+            return jsonify({"status": "error", "message": "Invalid JSON received"}), 400
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -43,10 +46,7 @@ def on_search():
         with open(filename, 'w') as f:
             json.dump(request_data, f, indent=2)
 
-        # Log storage location
         logging.info(f"✅ Response stored in: {filename}")
-
-        # Return success response
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
@@ -58,42 +58,42 @@ def on_search():
 @app.route('/view_responses', methods=['GET'])
 def view_responses():
     try:
-        # Get all stored response files
         response_files = [f for f in os.listdir(RESPONSES_DIR) if f.endswith('.json')]
-        response_files.sort(reverse=True)  # Show newest first
+        response_files.sort(reverse=True)
 
         responses = []
         for file in response_files:
-            with open(os.path.join(RESPONSES_DIR, file), 'r') as f:
-                data = json.load(f)
+            file_path = os.path.join(RESPONSES_DIR, file)
 
-                # Extract metadata from response
-                context = data.get('context', {})
-                transaction_id = context.get('transaction_id', 'unknown')
-                bpp_id = context.get('bpp_id', 'unknown')
-                timestamp = context.get('timestamp', 'unknown')
+            # Check if file is empty or unreadable
+            if os.stat(file_path).st_size == 0:
+                logging.warning(f"⚠️ Skipping empty file: {file}")
+                continue
 
-                # Count providers and items
-                providers_count = 0
-                items_count = 0
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+            except json.JSONDecodeError:
+                logging.error(f"❌ Skipping invalid JSON file: {file}")
+                continue
 
-                catalog = data.get('message', {}).get('catalog', {})
-                providers = catalog.get('providers', [])
-                providers_count = len(providers)
+            context = data.get('context', {})
+            transaction_id = context.get('transaction_id', 'unknown')
+            bpp_id = context.get('bpp_id', 'unknown')
+            timestamp = context.get('timestamp', 'unknown')
 
-                for provider in providers:
-                    items_count += len(provider.get('items', []))
+            providers_count = len(data.get('message', {}).get('catalog', {}).get('providers', []))
+            items_count = sum(len(provider.get('items', [])) for provider in data.get('message', {}).get('catalog', {}).get('providers', []))
 
-                responses.append({
-                    'filename': file,
-                    'transaction_id': transaction_id,
-                    'bpp_id': bpp_id,
-                    'timestamp': timestamp,
-                    'providers_count': providers_count,
-                    'items_count': items_count
-                })
+            responses.append({
+                'filename': file,
+                'transaction_id': transaction_id,
+                'bpp_id': bpp_id,
+                'timestamp': timestamp,
+                'providers_count': providers_count,
+                'items_count': items_count
+            })
 
-        # Render response list as HTML
         return render_template_string('''
         <!DOCTYPE html>
         <html>
@@ -140,33 +140,51 @@ def view_responses():
 
 
 # === [ ROUTE: View Specific Response ] ===
-@app.route("/view_responses", methods=["GET"])
-def view_responses():
-    print("📌 Debug: Fetching stored responses...")  # Debugging print
-    with open("responses.json", "r") as f:
-        data = f.read()
-        print("📌 Debug: Data from file ->", data)  # Print data for debugging
-    return jsonify(json.loads(data))
-    
+@app.route('/view_response/<filename>', methods=['GET'])
+def view_response(filename):
+    try:
+        file_path = os.path.join(RESPONSES_DIR, filename)
+
+        # Ensure file exists and is not empty
+        if not os.path.exists(file_path) or os.stat(file_path).st_size == 0:
+            return f"Error: File {filename} not found or is empty", 404
+
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+
+        formatted_json = json.dumps(data, indent=2)
+
+        return render_template_string('''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Response Details</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
+                .back-button { margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="back-button">
+                <a href="/view_responses">← Back to All Responses</a>
+            </div>
+            <h1>Response Details - {{ filename }}</h1>
+            <pre>{{ formatted_json }}</pre>
+        </body>
+        </html>
+        ''', filename=filename, formatted_json=formatted_json)
+
+    except Exception as e:
+        logging.error(f"❌ Error viewing response details: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+
 @app.route("/")
 def home():
     return "ONDC Callback Server is Running! 🚀"
 
 
-# === [ MAIN ENTRY POINT: Render Deployment Fix ] ===
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Get Render-assigned port
-    logging.info(f"""
-    ==========================================================
-    🚀 ONDC Callback Server is running on port {port}
-    
-    🌍 Accessible Endpoints:
-    - 📩 /on_search - Receives ONDC responses
-    - 📄 /view_responses - View stored responses
-
-    📡 For callbacks, update your ONDC configuration with:
-    {bap_uri}
-
-    ==========================================================
-    """)
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
