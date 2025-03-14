@@ -174,6 +174,10 @@ def view_response(filename):
     except Exception as e:
         logging.error(f"❌ Error viewing response details: {str(e)}")
         return f"Error: {str(e)}", 500
+    
+@app.route("/")
+def home():
+    return "ONDC Callback Server is Running! 🚀"
 
 
 # === [ MAIN ENTRY POINT: Render Deployment Fix ] ===
