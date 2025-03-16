@@ -1,4 +1,6 @@
 {
+  "mongo_uri": "mongodb+srv://mariyakundukulam:xtiCnxPNdOzXvqNv@mfondc.sjcat.mongodb.net/?retryWrites=true&w=majority&appName=mfondc",
+  "database_name": "ondc_responses",
   "bap_id": "staging.onesmf.com",
   "bap_uri": "https://staging.onesmf.com/",
   "domain": "ONDC:FIS14",
@@ -66,4 +68,6 @@
           }
       }
   }
+  
+  
 }
