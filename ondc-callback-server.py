@@ -38,6 +38,10 @@ os.makedirs(RESPONSES_DIR, exist_ok=True)
 BAP_URI = config.get("bap_uri", "")
 DOMAIN = BAP_URI.replace("https://", "").replace("http://", "").split("/")[0]
 
+@app.route("/")
+def home():
+    return "ONDC Callback Server is Running!"
+
 
 @app.route("/on_search", methods=["POST"])
 def on_search():
