@@ -17,8 +17,8 @@ else:
     config = {}
 
 # MongoDB Configuration
-MONGO_URI = config.get("mongo_uri")
-DB_NAME = config.get("db_name")
+MONGO_URI = config.get("mongo_uri", "mongodb+srv://mariyakundukulam:xtiCnxPNdOzXvqNv@mfondc.sjcat.mongodb.net/?retryWrites=true&w=majority&appName=mfondc")
+DB_NAME = config.get("db_name", "ondc_responses")
 
 # Try to connect to MongoDB
 mongo_client = None
