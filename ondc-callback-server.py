@@ -183,8 +183,7 @@ def view_response(filename):
         logging.error(f"Error viewing response details: {str(e)}")
         return f"Error: {str(e)}", 500
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.getenv("PORT", 5000))  # Use 5000 as default
     logging.info(f"ONDC Callback Server running on port {port}")
     app.run(host="0.0.0.0", port=port, debug=True)
