@@ -54,12 +54,6 @@ except subprocess.CalledProcessError as e:
 # Wait for on_select before proceeding
 wait_for_response("on_select", "https://staging.onesmf.com/check_on_select_status")
 
-# Run the on_select API after receiving on_select response
-print("Running ondc_api_search.py on_select...")
-try:
-    on_select_process = subprocess.run([sys.executable, "ondc_api_search.py", "on_select"], check=True)
-except subprocess.CalledProcessError as e:
-    print(f"Error running on_select: {e}")
 
 print("All API calls completed successfully.")
 
