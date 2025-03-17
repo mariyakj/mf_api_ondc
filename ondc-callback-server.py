@@ -81,7 +81,10 @@ def check_on_search_status():
 @app.route("/view_responses", methods=["GET"])
 def view_responses():
     try:
-        responses = []
+        responses = {  
+            "on_search": [],  # ✅ Initialize an empty list for "on_search"  
+            "on_select": []   # ✅ Initialize an empty list for "on_select"  
+        }
 
         if mongo_client:
             # Fetch from MongoDB
@@ -261,6 +264,7 @@ def view_response(transaction_id):
     except Exception as e:
         logging.error(f"Error viewing responses: {str(e)}")
         return f"Error: {str(e)}", 500
+    
 @app.route("/check_on_select_status", methods=["GET"])
 def check_on_select_status():
     latest_select_response = on_select_collection.find_one({}, sort=[("_id", -1)])
