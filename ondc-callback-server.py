@@ -103,7 +103,7 @@ def on_select():
             with open(filename, "w") as f:
                 json.dump(request_data, f, indent=2)
             logging.info(f"Stored response in file: {filename}")
-            
+
         on_select_received = True
 
         return jsonify({"status": "success"}), 200
@@ -266,46 +266,27 @@ def view_response(transaction_id):
         <!DOCTYPE html>
         <html>
         <head>
-            <title>ONDC Responses</title>
+            <title>ONDC Response Details</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                tr:nth-child(even) { background-color: #f9f9f9; }
-                tr:hover { background-color: #f2f2f2; }
+                pre { background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+                a { text-decoration: none; color: blue; }
+                a:hover { text-decoration: underline; }
             </style>
         </head>
         <body>
-            <h1>ONDC on_search Responses</h1>
-            <table>
-                <tr>
-                    <th>Transaction ID</th>
-                    <th>BPP ID</th>
-                    <th>Timestamp</th>
-                    <th>Providers</th>
-                    <th>Items</th>
-                    <th>Action</th>
-                </tr>
-                {% for response in responses %}
-                <tr>
-                    <td>{{ response.transaction_id }}</td>
-                    <td>{{ response.bpp_id }}</td>
-                    <td>{{ response.timestamp }}</td>
-                    <td>{{ response.providers_count }}</td>
-                    <td>{{ response.items_count }}</td>
-                    <td><a href="/view_response/{{ response.filename }}">View Details</a></td>
-                </tr>
-                {% endfor %}
-            </table>
+            <h1>ONDC Response Details</h1>
+            <a href="/view_responses">Back to Responses</a>
+            <h2>Transaction ID: {{ transaction_id }}</h2>
+            <pre>{{ formatted_json }}</pre>
         </body>
         </html>
         """, transaction_id=transaction_id, formatted_json=formatted_json)
 
     except Exception as e:
-        logging.error(f"Error viewing responses: {str(e)}")
+        logging.error(f"Error viewing response: {str(e)}")
         return f"Error: {str(e)}", 500
-    
+
 
 
 if __name__ == "__main__":
