@@ -50,6 +50,7 @@ def home():
 
 @app.route("/on_search", methods=["POST"])
 def on_search():
+    global on_search_received  # Ensure we update the global variable
     try:
         request_data = request.get_json()
         transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
@@ -67,11 +68,15 @@ def on_search():
                 json.dump(request_data, f, indent=2)
             logging.info(f"Stored response in file: {filename}")
 
+        # ✅ Update the polling flag
+        on_search_received = True  
+
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
         logging.error(f"Error processing on_search: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
     
 @app.route("/check_on_search_status", methods=["GET"])
 def check_on_search_status():
