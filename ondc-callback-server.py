@@ -292,4 +292,4 @@ def view_response(transaction_id):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))  # Use 5000 as default
     logging.info(f"ONDC Callback Server running on port {port}")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port)
