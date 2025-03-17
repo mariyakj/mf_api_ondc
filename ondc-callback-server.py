@@ -83,6 +83,38 @@ def check_on_search_status():
     return jsonify({"status": "received" if on_search_received else "waiting"}), 200
 
 
+@app.route("/on_select", methods=["POST"])
+def on_select():
+    try:
+        request_data = request.get_json()
+        transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Store response in MongoDB if available
+        if mongo_client:
+            request_data["received_at"] = timestamp
+            on_select_collection.insert_one(request_data)
+            logging.info(f"Stored on_select response in MongoDB for transaction: {transaction_id}")
+        else:
+            # Fallback to file storage
+            filename = f"{RESPONSES_DIR}/on_select_{transaction_id}_{timestamp.replace(':', '-')}.json"
+            with open(filename, "w") as f:
+                json.dump(request_data, f, indent=2)
+            logging.info(f"Stored response in file: {filename}")
+
+        return jsonify({"status": "success"}), 200
+
+    except Exception as e:
+        logging.error(f"Error processing on_select: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/check_on_select_status", methods=["GET"])
+def check_on_select_status():
+    latest_select_response = on_select_collection.find_one({}, sort=[("_id", -1)])
+    return jsonify({"status": "received" if latest_select_response else "waiting"}), 200
+
+
 @app.route("/view_responses", methods=["GET"])
 def view_responses():
     try:
@@ -270,10 +302,7 @@ def view_response(transaction_id):
         logging.error(f"Error viewing responses: {str(e)}")
         return f"Error: {str(e)}", 500
     
-@app.route("/check_on_select_status", methods=["GET"])
-def check_on_select_status():
-    latest_select_response = on_select_collection.find_one({}, sort=[("_id", -1)])
-    return jsonify({"status": "received" if latest_select_response else "waiting"}), 200
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))  # Use 5000 as default

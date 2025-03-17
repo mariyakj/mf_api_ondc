@@ -6,7 +6,7 @@ import base64
 import nacl.signing
 import uuid
 import requests
-import sys  # For command-line arguments
+import sys  
 import os
 
 TRANSACTION_FILE = "transaction_id.json"  # File to store transaction_id
