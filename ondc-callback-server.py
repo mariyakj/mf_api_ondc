@@ -10,6 +10,8 @@ from pymongo import MongoClient
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
+on_search_received = False
+
 # Load Configuration
 CONFIG_FILE = "config.json"
 if os.path.exists(CONFIG_FILE):
@@ -27,7 +29,8 @@ mongo_client = None
 try:
     mongo_client = MongoClient(MONGO_URI)
     db = mongo_client[DB_NAME]
-    collection = db["on_search"]
+    on_search_collection = db["on_search"]
+    on_select_collection = db["on_select"]
     logging.info("Connected to MongoDB successfully.")
 except Exception as e:
     logging.warning(f"MongoDB connection failed: {e}. Falling back to file storage.")
@@ -55,7 +58,7 @@ def on_search():
         # Store response in MongoDB if available
         if mongo_client:
             request_data["received_at"] = timestamp
-            collection.insert_one(request_data)
+            on_search_collection.insert_one(request_data)
             logging.info(f"Stored on_search response in MongoDB for transaction: {transaction_id}")
         else:
             # Fallback to file storage
@@ -69,6 +72,10 @@ def on_search():
     except Exception as e:
         logging.error(f"Error processing on_search: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route("/check_on_search_status", methods=["GET"])
+def check_on_search_status():
+    return jsonify({"status": "received" if on_search_received else "waiting"}), 200
 
 
 @app.route("/view_responses", methods=["GET"])
@@ -78,10 +85,10 @@ def view_responses():
 
         if mongo_client:
             # Fetch from MongoDB
-            records = collection.find({}, {"_id": 0})  # Exclude MongoDB's `_id` field
-            for data in records:
+            on_search_records = on_search_collection.find({}, {"_id": 0})  # Exclude MongoDB's `_id` field
+            for data in on_search_records:
                 context = data.get("context", {})
-                responses.append({
+                responses["on_search"].append({
                     "transaction_id": context.get("transaction_id", "unknown"),
                     "bpp_id": context.get("bpp_id", "unknown"),
                     "timestamp": context.get("timestamp", "unknown"),
@@ -89,6 +96,16 @@ def view_responses():
                     "items_count": sum(len(provider.get("items", [])) for provider in data.get("message", {}).get("catalog", {}).get("providers", [])),
                     "filename": context.get("transaction_id", "unknown"),  # Placeholder for file equivalent
                 })
+            on_select_records = on_select_collection.find({}, {"_id": 0})
+            for data in on_select_records:
+                context = data.get("context", {})
+                responses["on_select"].append({  # ✅ Append correctly
+                    "transaction_id": context.get("transaction_id", "unknown"),
+                    "bpp_id": context.get("bpp_id", "unknown"),
+                    "timestamp": context.get("timestamp", "unknown"),
+                    "selected_items_count": len(data.get("message", {}).get("order", {}).get("items", [])),
+                })
+        
         else:
             # Fallback to File Storage
             response_files = [f for f in os.listdir(RESPONSES_DIR) if f.endswith(".json")]
@@ -106,6 +123,100 @@ def view_responses():
                         "items_count": sum(len(provider.get("items", [])) for provider in data.get("message", {}).get("catalog", {}).get("providers", [])),
                         "filename": file,
                     })
+
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>ONDC Responses</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                tr:hover { background-color: #f2f2f2; }
+            </style>
+        </head>
+        <body>
+            <h1>ONDC Responses</h1>
+            
+            <h2>on_search Responses</h2>
+            <table>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>BPP ID</th>
+                    <th>Timestamp</th>
+                    <th>Providers</th>
+                    <th>Items</th>
+                    <th>Action</th>
+                </tr>
+                {% for response in responses["on_search"] %}
+                <tr>
+                    <td>{{ response.transaction_id }}</td>
+                    <td>{{ response.bpp_id }}</td>
+                    <td>{{ response.timestamp }}</td>
+                    <td>{{ response.providers_count }}</td>
+                    <td>{{ response.items_count }}</td>
+                    <td><a href="/view_response/{{ response.filename }}">View Details</a></td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <h2>on_select Responses</h2>
+            <table>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>BPP ID</th>
+                    <th>Timestamp</th>
+                    <th>Selected Items</th>
+                </tr>
+                {% for response in responses["on_select"] %}
+                <tr>
+                    <td>{{ response.transaction_id }}</td>
+                    <td>{{ response.bpp_id }}</td>
+                    <td>{{ response.timestamp }}</td>
+                    <td>{{ response.selected_items_count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+
+        </body>
+        </html>
+        """, responses=responses)
+
+    except Exception as e:
+        logging.error(f"Error viewing responses: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+
+@app.route("/view_response/<transaction_id>", methods=["GET"])
+def view_response(transaction_id):
+    try:
+        data = None
+
+        if mongo_client:
+            data = on_search_collection.find_one({"context.transaction_id": transaction_id}, {"_id": 0})
+            if not data:
+                data = on_select_collection.find_one({"context.transaction_id": transaction_id}, {"_id": 0})
+
+        if not data and not mongo_client:
+            # Check file storage fallback
+            possible_files = [
+                f"on_search_{transaction_id}.json",
+                f"on_select_{transaction_id}.json"
+            ]
+            for file in possible_files:
+                filepath = os.path.join(RESPONSES_DIR, file)
+                if os.path.exists(filepath):
+                    with open(filepath, "r") as f:
+                        data = json.load(f)
+                    break
+
+        if not data:
+            return "Transaction not found", 404
+
+        formatted_json = json.dumps(data, indent=2)
 
         return render_template_string("""
         <!DOCTYPE html>
@@ -145,49 +256,15 @@ def view_responses():
             </table>
         </body>
         </html>
-        """, responses=responses)
+        """, transaction_id=transaction_id, formatted_json=formatted_json)
 
     except Exception as e:
         logging.error(f"Error viewing responses: {str(e)}")
         return f"Error: {str(e)}", 500
-
-
-@app.route("/view_response/<filename>", methods=["GET"])
-def view_response(filename):
-    try:
-        if mongo_client:
-            data = collection.find_one({"context.transaction_id": filename}, {"_id": 0})
-            if not data:
-                return "Transaction not found", 404
-        else:
-            filepath = os.path.join(RESPONSES_DIR, filename)
-            if not os.path.exists(filepath):
-                return "File not found", 404
-            with open(filepath, "r") as f:
-                data = json.load(f)
-
-        formatted_json = json.dumps(data, indent=2)
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Response Details</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
-            </style>
-        </head>
-        <body>
-            <a href="/view_responses">← Back to All Responses</a>
-            <h1>Response Details - {{ filename }}</h1>
-            <pre>{{ formatted_json }}</pre>
-        </body>
-        </html>
-        """, filename=filename, formatted_json=formatted_json)
-
-    except Exception as e:
-        logging.error(f"Error viewing response details: {str(e)}")
-        return f"Error: {str(e)}", 500
+@app.route("/check_on_select_status", methods=["GET"])
+def check_on_select_status():
+    latest_select_response = on_select_collection.find_one({}, sort=[("_id", -1)])
+    return jsonify({"status": "received" if latest_select_response else "waiting"}), 200
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))  # Use 5000 as default
