@@ -11,6 +11,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 on_search_received = False
+on_select_received = False
 
 # Load Configuration
 CONFIG_FILE = "config.json"
@@ -85,6 +86,7 @@ def check_on_search_status():
 
 @app.route("/on_select", methods=["POST"])
 def on_select():
+    global on_select_received
     try:
         request_data = request.get_json()
         transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
@@ -101,6 +103,8 @@ def on_select():
             with open(filename, "w") as f:
                 json.dump(request_data, f, indent=2)
             logging.info(f"Stored response in file: {filename}")
+            
+        on_select_received = True
 
         return jsonify({"status": "success"}), 200
 
