@@ -56,4 +56,3 @@ wait_for_response("on_select", "https://staging.onesmf.com/check_on_select_statu
 
 
 print("All API calls completed successfully.")
-

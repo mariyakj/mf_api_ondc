@@ -76,10 +76,10 @@
       },
       "message": {
         "order": {
-          "provider": { "id": "P1" },
+          "provider": { "id": "c0250b65-3755-4f57-94ee-b0087cd09e4f" },
           "items": [
             {
-              "id": "ITEM_ID_1_MUTUAL-FUNDS",
+              "id": "2081e7f8-5731-41f3-a815-7dfd425c1028",
               "quantity": {
                 "selected": {
                   "measure": {
@@ -92,10 +92,10 @@
           ],
           "fulfillments": [
             {
-              "id": "9618fdc7-5027-44b1-aa07-e0c6cfd62c2d",
+              "id": "fb73a284-2c4c-4b02-96ac-6413a7d6bf5b",
               "type": "SIP",
               "customer": {
-                "person": { "id": "pan:apppm7771n" }
+                "person": { "id": "pan:applom7771n" }
               },
               "agent": {
                 "person": { "id": "euin:E52432" },
@@ -128,7 +128,7 @@
                                       "name": "Static Terms (Transaction Level)",
                                       "code": "STATIC_TERMS"
                                   },
-                                  "value": "https://buyerapp.com/legal/ondc:fis14/static_terms?v=0.1"
+                                  "value": "https://sellerapp.com/legal/ondc:fis14/static_terms?v=0.1"
                               },
                               {
                                   "descriptor": {
