@@ -288,6 +288,13 @@ def view_response(transaction_id):
     except Exception as e:
         logging.error(f"Error viewing response: {str(e)}")
         return f"Error: {str(e)}", 500
+    
+@app.route("/shutdown", methods=["GET"])
+def shutdown():
+    """Shutdown Flask server cleanly when called from starter.py."""
+    print("Shutting down the server...")
+    os.kill(os.getpid(), signal.SIGTERM)
+    return jsonify({"status": "shutting down"}), 200
 
 
 
