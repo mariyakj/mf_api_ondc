@@ -295,7 +295,10 @@ def shutdown():
     print("Shutting down the server...")
     os.kill(os.getpid(), signal.SIGTERM)
     return jsonify({"status": "shutting down"}), 200
-
+@app.route("/status", methods=["GET"])
+def status():
+    """Check if the server is running."""
+    return jsonify({"status": "running"}), 200
 
 
 if __name__ == "__main__":
