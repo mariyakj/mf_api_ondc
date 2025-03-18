@@ -5,7 +5,7 @@ import os
 import logging
 from datetime import datetime
 from pymongo import MongoClient
-import signal
+
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -51,26 +51,17 @@ def home():
 
 @app.route("/on_search", methods=["POST"])
 def on_search():
-    global on_search_received  # Ensure we update the global variable
     try:
         request_data = request.get_json()
         transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Store response in MongoDB if available
+        # Store response in MongoDB
         if mongo_client:
             request_data["received_at"] = timestamp
+            request_data["status"] = "received"  # ✅ Add status tracking
             on_search_collection.insert_one(request_data)
             logging.info(f"Stored on_search response in MongoDB for transaction: {transaction_id}")
-        else:
-            # Fallback to file storage
-            filename = f"{RESPONSES_DIR}/on_search_{transaction_id}_{timestamp.replace(':', '-')}.json"
-            with open(filename, "w") as f:
-                json.dump(request_data, f, indent=2)
-            logging.info(f"Stored response in file: {filename}")
-
-        # ✅ Update the polling flag
-        on_search_received = True  
 
         return jsonify({"status": "success"}), 200
 
@@ -78,14 +69,12 @@ def on_search():
         logging.error(f"Error processing on_search: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
     
 @app.route("/check_on_search_status", methods=["GET"])
 def check_on_search_status():
-    global on_search_received
-    if on_search_received:
-        on_search_received = False  # Reset for next search
-        return jsonify({"status": "received"}), 200
-    return jsonify({"status": "waiting"}), 200
+    latest_search_response = on_search_collection.find_one({}, sort=[("_id", -1)])
+    return jsonify({"status": "received" if latest_search_response else "waiting"}), 200
 
 
 
@@ -293,17 +282,7 @@ def view_response(transaction_id):
     except Exception as e:
         logging.error(f"Error viewing response: {str(e)}")
         return f"Error: {str(e)}", 500
-    
-@app.route("/shutdown", methods=["GET"])
-def shutdown():
-    """Shutdown Flask server cleanly when called from starter.py."""
-    print("Shutting down the server...")
-    os.kill(os.getpid(), signal.SIGTERM)
-    return jsonify({"status": "shutting down"}), 200
-@app.route("/status", methods=["GET"])
-def status():
-    """Check if the server is running."""
-    return jsonify({"status": "running"}), 200
+
 
 
 if __name__ == "__main__":
