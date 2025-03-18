@@ -81,7 +81,12 @@ def on_search():
     
 @app.route("/check_on_search_status", methods=["GET"])
 def check_on_search_status():
-    return jsonify({"status": "received" if on_search_received else "waiting"}), 200
+    global on_search_received
+    if on_search_received:
+        on_search_received = False  # Reset for next search
+        return jsonify({"status": "received"}), 200
+    return jsonify({"status": "waiting"}), 200
+
 
 
 @app.route("/on_select", methods=["POST"])
