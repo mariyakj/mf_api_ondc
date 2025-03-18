@@ -21,20 +21,10 @@ except subprocess.CalledProcessError as e:
     print(f"Error running search: {e}")
 
 # Function to wait for a specific response
-def wait_for_response(api_name, check_url, max_wait_time=300, interval=5):
-    """
-    Wait for a specific API response with a timeout.
-
-    :param api_name: Name of the API (e.g., "on_search").
-    :param check_url: URL to check the response status.
-    :param max_wait_time: Maximum time to wait before giving up (default: 300 seconds = 5 minutes).
-    :param interval: Time between status checks (default: 5 seconds).
-    """
+def wait_for_response(api_name, check_url):
     print(f"Waiting for {api_name} response...")
     
-    elapsed_time = 0  # Track how long we've been waiting
-
-    while elapsed_time < max_wait_time:
+    while True:
         try:
             response = requests.get(check_url, timeout=10)  # Timeout to avoid hanging
             response.raise_for_status()  # Raise HTTP error if status is not 200
@@ -44,17 +34,12 @@ def wait_for_response(api_name, check_url, max_wait_time=300, interval=5):
             print(f"Current {api_name} status: {status}")
 
             if status == "received":
-                print(f"{api_name} response obtained! Proceeding with the next step.")
-                return  # Exit loop successfully
-
+                print(f"{api_name} response obtained! Proceeding with next step.")
+                return  # Exit loop
         except requests.exceptions.RequestException as e:
             print(f"Error checking {api_name} status: {e}")
 
-        time.sleep(interval)  # Wait before checking again
-        elapsed_time += interval  # Update elapsed time
-
-    print(f"Timeout waiting for {api_name} response. Proceeding with the next step.")
-
+        time.sleep(5)  # Wait before checking again
 
 # Wait for on_search before proceeding
 wait_for_response("on_search", "https://staging.onesmf.com/check_on_search_status")

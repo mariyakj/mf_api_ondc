@@ -214,6 +214,7 @@ def view_responses():
                     <th>BPP ID</th>
                     <th>Timestamp</th>
                     <th>Selected Items</th>
+                    <th>Action</th>
                 </tr>
                 {% for response in responses["on_select"] %}
                 <tr>
@@ -221,6 +222,7 @@ def view_responses():
                     <td>{{ response.bpp_id }}</td>
                     <td>{{ response.timestamp }}</td>
                     <td>{{ response.selected_items_count }}</td>
+                    <td><a href="/view_response/{{ response.filename }}">View Details</a></td>
                 </tr>
                 {% endfor %}
             </table>
