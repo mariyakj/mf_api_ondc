@@ -61,8 +61,8 @@ request_body = {
     "message": base_payload["message"]  # Load message part dynamically
 }
 if api_action in ["select", "init", "confirm"]:
-    request_body["context"]["bpp_id"] = "pramaan.ondc.org/beta/staging/mock/seller"
-    request_body["context"]["bpp_uri"] = "https://pramaan.ondc.org/beta/staging/mock/seller"
+    request_body["context"]["bpp_id"] = "fis-staging.ondc.org/ondc-seller"
+    request_body["context"]["bpp_uri"] = "https://fis-staging.ondc.org/ondc-seller/"
 
 # Convert to JSON string
 request_body_str = json.dumps(request_body, separators=(',', ':'))
@@ -117,3 +117,19 @@ print("Request Sent to:", api_url)
 print("\nResponse Status Code:", response.status_code)
 print("\nResponse Body:", response.text)
 
+try:
+    response_json = response.json()
+    print("\nReceived Response:", json.dumps(response_json, indent=2))
+
+    if api_action == "select":
+        # Check for KYC form in `on_select` response
+        xinput = response_json.get("message", {}).get("order", {}).get("xinput", {})
+        required = xinput.get("form", {}).get("required", False)
+
+        if required:
+            print("\nKYC Form Required! Redirect User to:", xinput["form"].get("url", "No URL Provided"))
+        else:
+            print("\nNo KYC Form Required. Proceeding to Init...")
+
+except Exception as e:
+    print("\nError processing response:", str(e))
