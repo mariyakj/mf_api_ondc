@@ -5,7 +5,7 @@ import os
 import logging
 from datetime import datetime
 from pymongo import MongoClient
-
+import signal
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)

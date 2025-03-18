@@ -1,58 +1,65 @@
-import os
-import time
 import subprocess
-import requests
+import os
 import sys
+import time
+import requests
 
-def wait_for_response(response_type, url):
-    """Wait until the response for the given type is received."""
-    print(f"Waiting for {response_type} response...")
-    while True:
-        try:
-            response = requests.get(url)
-            data = response.json()
-            if data.get("status") == "received":
-                print(f"{response_type} response received.")
-                return
-        except requests.RequestException as e:
-            print(f"Error checking {response_type} status: {e}")
-        
-        time.sleep(5)  # Check every 5 seconds
-
-# Step 1: Start the callback server as a subprocess
 port = os.environ.get("PORT", "5000")
+
+# Start the Flask callback server in the background
 print(f"Starting callback server locally on port {port}...")
 callback_process = subprocess.Popen([sys.executable, "ondc-callback-server.py"])
-callback_pid = callback_process.pid  # Get process ID for later termination
 
-time.sleep(5)  # Allow server time to start
+# Give some time for the server to start
+time.sleep(5)
 
-# Step 2: Run the search request
+# Run the API search script
 print("Running ondc_api_search.py search...")
 try:
-    subprocess.run([sys.executable, "ondc_api_search.py", "search"], check=True)
+    search_process = subprocess.run([sys.executable, "ondc_api_search.py", "search"], check=True)
 except subprocess.CalledProcessError as e:
     print(f"Error running search: {e}")
 
-# Step 3: Wait for `on_search` response
+# Function to wait for a specific response
+def wait_for_response(api_name, check_url):
+    print(f"Waiting for {api_name} response...")
+    
+    while True:
+        try:
+            response = requests.get(check_url, timeout=10)  # Timeout to avoid hanging
+            response.raise_for_status()  # Raise HTTP error if status is not 200
+            data = response.json()
+
+            status = data.get("status", "pending")
+            print(f"Current {api_name} status: {status}")
+
+            if status == "received":
+                print(f"{api_name} response obtained! Proceeding with next step.")
+                return  # Exit loop
+        except requests.exceptions.RequestException as e:
+            print(f"Error checking {api_name} status: {e}")
+
+        time.sleep(5)  # Wait before checking again
+
+# Wait for on_search before proceeding
 wait_for_response("on_search", "https://staging.onesmf.com/check_on_search_status")
 
-# Step 4: Run the select request
+# Run the select API after receiving on_search response
 print("Running ondc_api_search.py select...")
 try:
-    subprocess.run([sys.executable, "ondc_api_search.py", "select"], check=True)
+    select_process = subprocess.run([sys.executable, "ondc_api_search.py", "select"], check=True)
 except subprocess.CalledProcessError as e:
     print(f"Error running select: {e}")
 
-# Step 5: Wait for `on_select` response
+# Wait for on_select before proceeding
 wait_for_response("on_select", "https://staging.onesmf.com/check_on_select_status")
 
-# Step 6: Shutdown the callback server once `on_select` is received
-print("Shutting down callback server...")
-requests.get(f"http://localhost:{port}/shutdown")  # Call Flask shutdown endpoint
-
-# Kill the process manually in case the shutdown request fails
-if callback_process.poll() is None:  
-    callback_process.terminate()  # Stop the process if still running
 
 print("All API calls completed successfully.")
+
+# Start the Flask server with Gunicorn only in production
+if os.environ.get("ENV") == "production":
+    print("Starting callback server with Gunicorn...")
+    subprocess.run(["gunicorn", "-b", f"0.0.0.0:{port}", "ondc-callback-server:app"])
+else:
+    print(f"Callback server already running on port {port}.")
