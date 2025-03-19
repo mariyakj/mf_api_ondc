@@ -8,6 +8,8 @@ from datetime import datetime
 from pymongo import MongoClient
 from typing import Optional, Dict, List
 
+import uvicorn
+
 app = FastAPI()
 
 logging.basicConfig(level=logging.INFO)
@@ -278,4 +280,5 @@ def view_response(transaction_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=int(port))
+    port = int(os.getenv("PORT", 8000))  # Default to 8000 if PORT is not set
+    uvicorn.run(app, host="0.0.0.0", port=port)
