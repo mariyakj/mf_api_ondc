@@ -114,8 +114,8 @@ def check_on_select_status():
 def view_responses():
     try:
         responses = {  
-            "on_search": [],  # ✅ Initialize an empty list for "on_search"  
-            "on_select": []   # ✅ Initialize an empty list for "on_select"  
+            "on_search": [],  # Initialize an empty list for "on_search"  
+            "on_select": []   # Initialize an empty list for "on_select"  
         }
 
         if mongo_client:
@@ -134,7 +134,7 @@ def view_responses():
             on_select_records = on_select_collection.find({}, {"_id": 0})
             for data in on_select_records:
                 context = data.get("context", {})
-                responses["on_select"].append({  # ✅ Append correctly
+                responses["on_select"].append({  # Append correctly
                     "transaction_id": context.get("transaction_id", "unknown"),
                     "bpp_id": context.get("bpp_id", "unknown"),
                     "timestamp": context.get("timestamp", "unknown"),
@@ -150,7 +150,7 @@ def view_responses():
                 with open(os.path.join(RESPONSES_DIR, file), "r") as f:
                     data = json.load(f)
                     context = data.get("context", {})
-                    responses.append({
+                    responses["on_search"].append({
                         "transaction_id": context.get("transaction_id", "unknown"),
                         "bpp_id": context.get("bpp_id", "unknown"),
                         "timestamp": context.get("timestamp", "unknown"),
@@ -159,7 +159,8 @@ def view_responses():
                         "filename": file,
                     })
 
-        return HTMLResponse(content=f"""
+        # Construct the HTML response
+        html_content = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -220,7 +221,8 @@ def view_responses():
 
         </body>
         </html>
-        """)
+        """
+        return HTMLResponse(content=html_content)
 
     except Exception as e:
         logging.error(f"Error viewing responses: {str(e)}")
@@ -280,5 +282,6 @@ def view_response(transaction_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))  # Default to 8000 if PORT is not set
+    port = int(os.getenv("PORT", 5000))  # Use 5000 as default
+    logging.info(f"ONDC Callback Server running on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
