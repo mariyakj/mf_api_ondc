@@ -56,5 +56,5 @@ wait_for_response("on_select", f"http://localhost:{port}/check_on_select_status"
 
 print("All API calls completed successfully.")
 
-# To terminate the FastAPI server when done
+
 callback_process.terminate()
