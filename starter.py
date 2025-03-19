@@ -1,3 +1,4 @@
+#starter.py
 import subprocess
 import os
 import sys
@@ -6,9 +7,9 @@ import requests
 
 port = os.environ.get("PORT", "5000")
 
-# Start the FastAPI callback server in the background
-print(f"Starting FastAPI callback server locally on port {port}...")
-callback_process = subprocess.Popen([sys.executable, "-m", "uvicorn", "ondc_callback_server_fastapi:app", "--host", "0.0.0.0", "--port", port])
+# Start the Flask callback server in the background
+print(f"Starting callback server locally on port {port}...")
+callback_process = subprocess.Popen([sys.executable, "ondc-callback-server.py"])
 
 # Give some time for the server to start
 time.sleep(5)
@@ -42,7 +43,7 @@ def wait_for_response(api_name, check_url):
         time.sleep(5)  # Wait before checking again
 
 # Wait for on_search before proceeding
-wait_for_response("on_search", f"http://localhost:{port}/check_on_search_status")
+wait_for_response("on_search", "https://staging.onesmf.com/check_on_search_status")
 
 # Run the select API after receiving on_search response
 print("Running ondc_api_search.py select...")
@@ -52,9 +53,7 @@ except subprocess.CalledProcessError as e:
     print(f"Error running select: {e}")
 
 # Wait for on_select before proceeding
-wait_for_response("on_select", f"http://localhost:{port}/check_on_select_status")
+wait_for_response("on_select", "https://staging.onesmf.com/check_on_select_status")
+
 
 print("All API calls completed successfully.")
-
-# To terminate the FastAPI server when done
-callback_process.terminate()
