@@ -282,6 +282,6 @@ def view_response(transaction_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # Use 5000 as default
+    port = int(os.getenv("PORT", 10000))  # Use Render's default port (10000) or fallback to 10000
     logging.info(f"ONDC Callback Server running on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
