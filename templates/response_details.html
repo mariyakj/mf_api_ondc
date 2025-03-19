@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ONDC Response Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        a { text-decoration: none; color: blue; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>ONDC Response Details</h1>
+    <a href="/view_responses">Back to Responses</a>
+    <h2>Transaction ID: {{ transaction_id }}</h2>
+    <pre>{{ formatted_json }}</pre>
+</body>
+</html>
