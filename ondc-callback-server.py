@@ -305,6 +305,6 @@ def generate_response_detail_html(transaction_id, formatted_json):
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))  # Default to 10000 if PORT is not set
+    port = int(os.getenv("PORT", 8000))  # Use the PORT environment variable or default to 8000
     logging.info(f"ONDC Callback Server running on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
