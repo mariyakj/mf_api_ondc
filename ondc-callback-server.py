@@ -1,19 +1,17 @@
 #ondc-callback-server.py
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from flask import Flask, request, jsonify, render_template_string
 import json
 import os
 import logging
 from datetime import datetime
 from pymongo import MongoClient
 
-app = FastAPI()
+
+app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Initialize Jinja2 templates
-templates = Jinja2Templates(directory="templates")
+on_search_received = False
+on_select_received = False
 
 # Load Configuration
 CONFIG_FILE = "config.json"
@@ -46,15 +44,15 @@ os.makedirs(RESPONSES_DIR, exist_ok=True)
 BAP_URI = config.get("bap_uri", "")
 DOMAIN = BAP_URI.replace("https://", "").replace("http://", "").split("/")[0]
 
-@app.get("/")
+@app.route("/")
 def home():
-    return {"message": "ONDC Callback Server is Running!"}
+    return "ONDC Callback Server is Running!"
 
 
-@app.post("/on_search")
-async def on_search(request: Request):
+@app.route("/on_search", methods=["POST"])
+def on_search():
     try:
-        request_data = await request.json()
+        request_data = request.get_json()
         transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -65,23 +63,26 @@ async def on_search(request: Request):
             on_search_collection.insert_one(request_data)
             logging.info(f"Stored on_search response in MongoDB for transaction: {transaction_id}")
 
-        return {"status": "success"}
+        return jsonify({"status": "success"}), 200
 
     except Exception as e:
         logging.error(f"Error processing on_search: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@app.get("/check_on_search_status")
+    
+@app.route("/check_on_search_status", methods=["GET"])
 def check_on_search_status():
     latest_search_response = on_search_collection.find_one({}, sort=[("_id", -1)])
-    return {"status": "received" if latest_search_response else "waiting"}
+    return jsonify({"status": "received" if latest_search_response else "waiting"}), 200
 
 
-@app.post("/on_select")
-async def on_select(request: Request):
+
+@app.route("/on_select", methods=["POST"])
+def on_select():
+    global on_select_received
     try:
-        request_data = await request.json()
+        request_data = request.get_json()
         transaction_id = request_data.get("context", {}).get("transaction_id", "unknown")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -97,30 +98,32 @@ async def on_select(request: Request):
                 json.dump(request_data, f, indent=2)
             logging.info(f"Stored response in file: {filename}")
 
-        return {"status": "success"}
+        on_select_received = True
+
+        return jsonify({"status": "success"}), 200
 
     except Exception as e:
         logging.error(f"Error processing on_select: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@app.get("/check_on_select_status")
+@app.route("/check_on_select_status", methods=["GET"])
 def check_on_select_status():
     latest_select_response = on_select_collection.find_one({}, sort=[("_id", -1)])
-    return {"status": "received" if latest_select_response else "waiting"}
+    return jsonify({"status": "received" if latest_select_response else "waiting"}), 200
 
 
-@app.get("/view_responses", response_class=HTMLResponse)
+@app.route("/view_responses", methods=["GET"])
 def view_responses():
     try:
-        responses = {
-            "on_search": [],
-            "on_select": []
+        responses = {  
+            "on_search": [],  # ✅ Initialize an empty list for "on_search"  
+            "on_select": []   # ✅ Initialize an empty list for "on_select"  
         }
 
         if mongo_client:
             # Fetch from MongoDB
-            on_search_records = on_search_collection.find({}, {"_id": 0})
+            on_search_records = on_search_collection.find({}, {"_id": 0})  # Exclude MongoDB's `_id` field
             for data in on_search_records:
                 context = data.get("context", {})
                 responses["on_search"].append({
@@ -129,27 +132,106 @@ def view_responses():
                     "timestamp": context.get("timestamp", "unknown"),
                     "providers_count": len(data.get("message", {}).get("catalog", {}).get("providers", [])),
                     "items_count": sum(len(provider.get("items", [])) for provider in data.get("message", {}).get("catalog", {}).get("providers", [])),
-                    "filename": context.get("transaction_id", "unknown"),
+                    "filename": context.get("transaction_id", "unknown"),  # Placeholder for file equivalent
                 })
             on_select_records = on_select_collection.find({}, {"_id": 0})
             for data in on_select_records:
                 context = data.get("context", {})
-                responses["on_select"].append({
+                responses["on_select"].append({  # ✅ Append correctly
                     "transaction_id": context.get("transaction_id", "unknown"),
                     "bpp_id": context.get("bpp_id", "unknown"),
                     "timestamp": context.get("timestamp", "unknown"),
                     "selected_items_count": len(data.get("message", {}).get("order", {}).get("items", [])),
                 })
+        
+        else:
+            # Fallback to File Storage
+            response_files = [f for f in os.listdir(RESPONSES_DIR) if f.endswith(".json")]
+            response_files.sort(reverse=True)
 
-        return templates.TemplateResponse("responses.html", {"request": {}, "responses": responses})
+            for file in response_files:
+                with open(os.path.join(RESPONSES_DIR, file), "r") as f:
+                    data = json.load(f)
+                    context = data.get("context", {})
+                    responses.append({
+                        "transaction_id": context.get("transaction_id", "unknown"),
+                        "bpp_id": context.get("bpp_id", "unknown"),
+                        "timestamp": context.get("timestamp", "unknown"),
+                        "providers_count": len(data.get("message", {}).get("catalog", {}).get("providers", [])),
+                        "items_count": sum(len(provider.get("items", [])) for provider in data.get("message", {}).get("catalog", {}).get("providers", [])),
+                        "filename": file,
+                    })
+
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>ONDC Responses</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                tr:hover { background-color: #f2f2f2; }
+            </style>
+        </head>
+        <body>
+            <h1>ONDC Responses</h1>
+            
+            <h2>on_search Responses</h2>
+            <table>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>BPP ID</th>
+                    <th>Timestamp</th>
+                    <th>Providers</th>
+                    <th>Items</th>
+                    <th>Action</th>
+                </tr>
+                {% for response in responses["on_search"] %}
+                <tr>
+                    <td>{{ response.transaction_id }}</td>
+                    <td>{{ response.bpp_id }}</td>
+                    <td>{{ response.timestamp }}</td>
+                    <td>{{ response.providers_count }}</td>
+                    <td>{{ response.items_count }}</td>
+                    <td><a href="/view_response/{{ response.filename }}">View Details</a></td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <h2>on_select Responses</h2>
+            <table>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>BPP ID</th>
+                    <th>Timestamp</th>
+                    <th>Selected Items</th>
+                    <th>Action</th>
+                </tr>
+                {% for response in responses["on_select"] %}
+                <tr>
+                    <td>{{ response.transaction_id }}</td>
+                    <td>{{ response.bpp_id }}</td>
+                    <td>{{ response.timestamp }}</td>
+                    <td>{{ response.selected_items_count }}</td>
+                    <td><a href="/view_response/{{ response.filename }}">View Details</a></td>
+                </tr>
+                {% endfor %}
+            </table>
+
+        </body>
+        </html>
+        """, responses=responses)
 
     except Exception as e:
         logging.error(f"Error viewing responses: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return f"Error: {str(e)}", 500
 
 
-@app.get("/view_response/{transaction_id}", response_class=HTMLResponse)
-def view_response(transaction_id: str):
+@app.route("/view_response/<transaction_id>", methods=["GET"])
+def view_response(transaction_id):
     try:
         data = None
 
@@ -172,19 +254,38 @@ def view_response(transaction_id: str):
                     break
 
         if not data:
-            raise HTTPException(status_code=404, detail="Transaction not found")
+            return "Transaction not found", 404
 
         formatted_json = json.dumps(data, indent=2)
 
-        return templates.TemplateResponse("response_details.html", {"request": {}, "transaction_id": transaction_id, "formatted_json": formatted_json})
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>ONDC Response Details</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                pre { background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+                a { text-decoration: none; color: blue; }
+                a:hover { text-decoration: underline; }
+            </style>
+        </head>
+        <body>
+            <h1>ONDC Response Details</h1>
+            <a href="/view_responses">Back to Responses</a>
+            <h2>Transaction ID: {{ transaction_id }}</h2>
+            <pre>{{ formatted_json }}</pre>
+        </body>
+        </html>
+        """, transaction_id=transaction_id, formatted_json=formatted_json)
 
     except Exception as e:
         logging.error(f"Error viewing response: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return f"Error: {str(e)}", 500
+
 
 
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.getenv("PORT", 5000))  # Use 5000 as default
     logging.info(f"ONDC Callback Server running on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
