@@ -6,8 +6,8 @@
   "domain": "ONDC:FIS14",
   "version": "2.0.0",
   "ttl": "PT10M",
-  "private_key_base64": "9MyRGukvg==",
-  "key_id": "staging.onesmf.com|58072g41-87-b8ca-24273d9b07b3|ed25519",
+  "private_key_base64": "9MyRGumH8I+A6EHDOqz7XcUYsAGxz7NuGO6Pi13FaR+nSJzoeOX6yjTXZc/Uib2oyHe24PADJoYtrw0Fex5kvg==",
+  "key_id": "staging.onesmf.com|58072g41-8cae-2f577-b8ca-24273d9b07b3|ed25519",
   "api_endpoints": {
       "search": "https://staging.gateway.proteantech.in/search",
       "select": "https://fis-staging.ondc.org/ondc-seller/select",
