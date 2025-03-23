@@ -1,10 +1,7 @@
 import os
 from fastapi import FastAPI
-import redis
 import uvicorn
-from redis_client import RedisClient
 from routes import search, on_search
-from utils.redis_helper import redis_client
 
 app = FastAPI()
 
