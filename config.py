@@ -6,6 +6,8 @@ import os
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://mariyakundukulam:xtiCnxPNdOzXvqNv@mfondc.sjcat.mongodb.net/?retryWrites=true&w=majority&appName=mfondc")
 DB_NAME = os.getenv("DB_NAME", "ondc_responses")
 
+REDIS_URL = "redis://default:e42nmZPX38xqRqehbna0u4gnMoFUBtWW@redis-15120.c264.ap-south-1-1.ec2.redns.redis-cloud.com:15120"
+
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client[DB_NAME]
 

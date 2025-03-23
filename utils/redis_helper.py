@@ -1,8 +1,8 @@
 import redis
+from config import config  # Import the config object
 
-REDIS_URL = "redis://default:e42nmZPX38xqRqehbna0u4gnMoFUBtWW@redis-15120.c264.ap-south-1-1.ec2.redns.redis-cloud.com:15120"
-
-redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+# Initialize Redis client
+redis_client = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
 
 def test_redis():
     """Function to test Redis connection"""
@@ -12,5 +12,5 @@ def test_redis():
     except redis.exceptions.ConnectionError:
         print("❌ Failed to connect to Redis.")
 
-# Uncomment this to test connection when script runs
+# Uncomment to test connection when script runs
 # test_redis()
