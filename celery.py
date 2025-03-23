@@ -1,14 +1,22 @@
+import os
 from celery import Celery
-from config import Config  # Import the correct config class
+from redis_client import REDIS_URL
 
-celery = Celery(
-    "tasks",
-    broker=Config.REDIS_URL,  # Use Redis as the broker
-    backend=Config.REDIS_URL  # Use Redis as the result backend
+# Configure Celery to use Redis as both broker and backend
+celery_app = Celery(
+    'ondc_tasks',
+    broker=REDIS_URL,
+    backend=REDIS_URL,
+    broker_connection_retry_on_startup=True
 )
 
-celery.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_expires=3600,
+# Celery Configuration
+celery_app.conf.update(
+    broker_connection_retry=True,
+    broker_connection_max_retries=None,
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
 )
