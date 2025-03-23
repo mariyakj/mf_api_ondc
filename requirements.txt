@@ -1,8 +1,6 @@
 fastapi
 uvicorn
 pymongo
-redis
 httpx
 pynacl
-celery
 python-dotenv
