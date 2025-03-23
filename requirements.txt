@@ -5,3 +5,4 @@ redis
 httpx
 pynacl
 celery
+python-dotenv
