@@ -11,5 +11,5 @@ mongo_client = MongoClient(MONGO_URI)
 db = mongo_client[DB_NAME]
 
 on_search_collection = db["on_search"]
-
+status_collection = db["status"]
 
