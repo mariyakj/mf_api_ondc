@@ -13,17 +13,7 @@ app.include_router(search.router)
 app.include_router(on_search.router)
 
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-client = redis.from_url(redis_url)
-
-@app.get("/check-redis")
-async def check_redis():
-    try:
-        client = RedisClient.get_client()  # Use the shared instance
-        response = client.ping()
-        return {"status": "✅ Redis is working!" if response else "❌ Redis ping failed!"}
-    except Exception as e:
-        return {"status": "❌ Redis connection failed", "error": str(e)}
+app.include_router(search.router)
 
 @app.get("/")
 def root():

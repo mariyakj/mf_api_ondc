@@ -1,7 +1,35 @@
-from utils.redis_helper import update_status
+import httpx
+from pymongo import MongoClient
+from auth import generate_auth_header
 
-async def store_on_search_response(response_data: dict):
-    transaction_id = response_data.get("context", {}).get("transaction_id")
-    if transaction_id:
-        update_status(transaction_id, "on_search", "received")
-    return {"status": "success"}
+# Initialize MongoDB connection
+client = MongoClient("mongodb+srv://mariyakundukulam:xtiCnxPNdOzXvqNv@mfondc.sjcat.mongodb.net/?retryWrites=true&w=majority&appName=mfondc")  # Replace with actual MongoDB URI
+db = client["ondc_responses"]
+status_collection = db["search_status"]
+
+async def perform_search(transaction_id: str):
+    """Handles the search request and updates status in MongoDB"""
+    request_body, auth_header = generate_auth_header()
+    
+    headers = {
+        "Authorization": auth_header,
+        "Content-Type": "application/json"
+    }
+    
+    # Update status in MongoDB
+    status_collection.update_one(
+        {"transaction_id": transaction_id}, 
+        {"$set": {"status": "processing"}}, 
+        upsert=True
+    )
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post("https://staging.gateway.proteantech.in/search", json=request_body, headers=headers)
+
+    # Update status after sending request
+    status_collection.update_one(
+        {"transaction_id": transaction_id}, 
+        {"$set": {"status": "waiting_for_on_search"}}
+    )
+
+    return {"message": "Search request sent", "transaction_id": transaction_id}
