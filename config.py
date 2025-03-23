@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-import redis
 import os
 
 # MongoDB Configuration
