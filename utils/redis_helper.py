@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-# Get Redis URL from environment variable with fallback to cloud URL
+# Corrected Redis URL (Ensure the port matches your Redis Cloud instance)
 REDIS_URL = os.getenv(
     "REDIS_URL", 
-    "redis://default:e42nmZPX38xqRqehbna0u4gnMoFUBtWW@redis-15120.c264.ap-south-1-1.ec2.redns.redis-cloud.com:15120"
+    "redis://default:e42n0u4gnMoFUBtWW@redis-15120.c4.ap-south-1-1.ec2.redns.redis-cloud.com:1512"
 )
 
 class RedisClient:
@@ -39,6 +39,7 @@ class RedisClient:
 
     @classmethod
     def update_status(cls, transaction_id: str, action: str, status: str) -> bool:
+        """Update the transaction status in Redis."""
         try:
             client = cls.get_client()
             key = f"{action}:{transaction_id}"
@@ -48,18 +49,19 @@ class RedisClient:
             })
             return True
         except Exception as e:
-            logger.error(f"Failed to update status in Redis: {e}")
+            logger.error(f"❌ Failed to update status in Redis: {e}")
             return False
 
     @classmethod
     def get_status(cls, transaction_id: str, action: str) -> Dict[str, Any]:
+        """Retrieve the transaction status from Redis."""
         try:
             client = cls.get_client()
             key = f"{action}:{transaction_id}"
             status = client.hgetall(key)
             return status or {"status": "waiting"}
         except Exception as e:
-            logger.error(f"Failed to get status from Redis: {e}")
+            logger.error(f"❌ Failed to get status from Redis: {e}")
             return {"status": "error"}
 
 # Create global instance

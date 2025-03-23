@@ -1,10 +1,10 @@
 import httpx
 import asyncio
 from auth import generate_auth_header
-from utils.redis_helper import update_status
-from utils.redis_helper import RedisClient
+from utils.redis_helper import RedisClient  # Import the RedisClient class
 
 async def perform_search():
+    """ Performs the search operation and updates Redis status. """
     request_body, auth_header = generate_auth_header()
     
     headers = {
@@ -12,11 +12,15 @@ async def perform_search():
         "Content-Type": "application/json"
     }
     
-    update_status(request_body["context"]["transaction_id"], "processing")
+    transaction_id = request_body["context"]["transaction_id"]
+
+    # Update Redis status correctly
+    RedisClient.update_status(transaction_id, "search", "processing")
     
     async with httpx.AsyncClient() as client:
         response = await client.post("https://staging.gateway.proteantech.in/search", json=request_body, headers=headers)
     
-    update_status(request_body["context"]["transaction_id"], "waiting_for_on_search")
+    # Update Redis status after sending request
+    RedisClient.update_status(transaction_id, "search", "waiting_for_on_search")
     
-    return {"message": "Search request sent", "transaction_id": request_body["context"]["transaction_id"]}
+    return {"message": "Search request sent", "transaction_id": transaction_id}
