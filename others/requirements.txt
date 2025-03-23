@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-pymongo
-redis
-httpx
+requests
 pynacl
+pymongo

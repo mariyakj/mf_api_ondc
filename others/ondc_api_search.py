@@ -52,7 +52,7 @@ request_body = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),  # Dynamic timestamp
         "bap_id": config["bap_id"],
         "bap_uri": config["bap_uri"],
-        "transaction_id": "d311d71b-66b3-4547-8dd0-772b723455e6",
+        "transaction_id": "transaction_id",
         "message_id": str(uuid.uuid4()),  # Unique message ID
         "version": config["version"],
         "ttl": config["ttl"],
