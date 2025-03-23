@@ -1,5 +1,5 @@
 from celery import Celery as CeleryApp
-from redis_client import REDIS_URL
+from utils.redis_helper import REDIS_URL
 
 # Configure Celery to use Redis as both broker and backend
 celery_app = CeleryApp(

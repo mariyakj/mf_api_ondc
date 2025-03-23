@@ -2,6 +2,7 @@ import httpx
 import asyncio
 from auth import generate_auth_header
 from utils.redis_helper import update_status
+from utils.redis_helper import RedisClient
 
 async def perform_search():
     request_body, auth_header = generate_auth_header()
