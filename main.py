@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 import redis
 import uvicorn
+from redis_client import RedisClient
 from routes import search, on_search
 from utils.redis_helper import redis_client
 
@@ -18,6 +19,7 @@ client = redis.from_url(redis_url)
 @app.get("/check-redis")
 async def check_redis():
     try:
+        client = RedisClient.get_client()  # Use the shared instance
         response = client.ping()
         return {"status": "✅ Redis is working!" if response else "❌ Redis ping failed!"}
     except Exception as e:
@@ -29,4 +31,5 @@ def root():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 10000))  # Render provides PORT dynamically
+    print(f"Starting server on port {port}")  # Debugging statement
     uvicorn.run(app, host="0.0.0.0", port=port)
