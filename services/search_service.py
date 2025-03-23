@@ -1,35 +1,53 @@
 import httpx
-from pymongo import MongoClient
+import logging
+from fastapi import HTTPException
+from utils.redis_helper import update_status
 from auth import generate_auth_header
 
-# Initialize MongoDB connection
-client = MongoClient("mongodb+srv://mariyakundukulam:xtiCnxPNdOzXvqNv@mfondc.sjcat.mongodb.net/?retryWrites=true&w=majority&appName=mfondc")  # Replace with actual MongoDB URI
-db = client["ondc_responses"]
-status_collection = db["search_status"]
+logger = logging.getLogger(__name__)
 
 async def perform_search(transaction_id: str):
-    """Handles the search request and updates status in MongoDB"""
-    request_body, auth_header = generate_auth_header()
-    
-    headers = {
-        "Authorization": auth_header,
-        "Content-Type": "application/json"
-    }
-    
-    # Update status in MongoDB
-    status_collection.update_one(
-        {"transaction_id": transaction_id}, 
-        {"$set": {"status": "processing"}}, 
-        upsert=True
-    )
+    """Handles the search request and updates status"""
+    try:
+        request_body, auth_header = generate_auth_header()
+        
+        headers = {
+            "Authorization": auth_header,
+            "Content-Type": "application/json"
+        }
+        
+        # Update initial status
+        update_status(transaction_id, "search", "processing")
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post("https://staging.gateway.proteantech.in/search", json=request_body, headers=headers)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://staging.gateway.proteantech.in/search", 
+                json=request_body, 
+                headers=headers,
+                timeout=30.0
+            )
+            response.raise_for_status()
 
-    # Update status after sending request
-    status_collection.update_one(
-        {"transaction_id": transaction_id}, 
-        {"$set": {"status": "waiting_for_on_search"}}
-    )
+        # Update status after successful request
+        update_status(transaction_id, "search", "waiting_for_on_search")
+        
+        return {
+            "message": "Search request sent", 
+            "transaction_id": transaction_id,
+            "status": "success"
+        }
 
-    return {"message": "Search request sent", "transaction_id": transaction_id}
+    except httpx.TimeoutException:
+        logger.error(f"Search request timed out for transaction {transaction_id}")
+        update_status(transaction_id, "search", "error")
+        raise HTTPException(status_code=504, detail="Gateway timeout")
+        
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Search request failed for transaction {transaction_id}: {str(e)}")
+        update_status(transaction_id, "search", "error")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in search for transaction {transaction_id}: {str(e)}")
+        update_status(transaction_id, "search", "error")
+        raise HTTPException(status_code=500, detail="Internal server error")

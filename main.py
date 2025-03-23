@@ -1,20 +1,28 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from routes import search, on_search
 
-app = FastAPI()
+app = FastAPI(title="ONDC API Client")
 
-# Include routes
-app.include_router(search.router)
-app.include_router(on_search.router)
-
-
-app.include_router(search.router)
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
-def root():
-    return {"message": "ONDC Mutual Fund API is running!"}
+async def root():
+    """Root endpoint for health checks"""
+    return {"status": "OK", "service": "ONDC API Client"}
+
+# Include routers
+app.include_router(search.router)
+app.include_router(on_search.router)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 10000))  # Render provides PORT dynamically
