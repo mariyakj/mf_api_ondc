@@ -1,13 +1,14 @@
 from celery import Celery
-from config import config  # Import config
+from config import Config  # Import the correct config class
 
-celery = Celery("tasks", broker=config.REDIS_URL)
-
-celery.conf.update(
-    result_backend=config.REDIS_URL,
-    task_serializer="json",
+celery = Celery(
+    "tasks",
+    broker=Config.REDIS_URL,  # Use Redis as the broker
+    backend=Config.REDIS_URL  # Use Redis as the result backend
 )
 
-@celery.task
-def test_task():
-    return "Celery is working with Redis!"
+celery.conf.update(
+    task_serializer="json",
+    accept_content=["json"],
+    result_expires=3600,
+)

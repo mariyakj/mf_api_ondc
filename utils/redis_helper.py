@@ -1,8 +1,15 @@
+import os
 import redis
-from config import config  # Import the config object
+from dotenv import load_dotenv  # Load environment variables from .env
+
+# Load environment variables
+load_dotenv()
+
+# Get Redis URL from environment variable
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")  
 
 # Initialize Redis client
-redis_client = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 def test_redis():
     """Function to test Redis connection"""
