@@ -21,7 +21,10 @@ async def root():
     return {"message": "FastAPI ONDC Service Running"}
 
 # Include routers
+print("🔗 Including search router...")
 app.include_router(search.router)
+
+print("🔗 Including on_search router...")
 app.include_router(on_search.router)
 
 if __name__ == "__main__":
