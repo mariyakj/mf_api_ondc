@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/search")
+@router.post("/search") 
 async def search(background_tasks: BackgroundTasks, transaction_id: str):
     """Triggers the search process in the background"""
     try:
