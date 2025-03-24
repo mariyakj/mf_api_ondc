@@ -15,7 +15,7 @@ async def store_on_search_response(response):
 async def update_status(transaction_id: str, stage: str, status: str):
     """Updates transaction status in MongoDB asynchronously."""
     await status_collection.update_one(
-        {"transaction_id": transaction_id}, 
-        {"$set": {"stage": stage, "status": status}}, 
+        {"transaction_id": transaction_id},
+        {"$set": {"status": status, "stage": stage}},  # ✅ Fix: Use 'status' instead of 'status_type'
         upsert=True
     )
