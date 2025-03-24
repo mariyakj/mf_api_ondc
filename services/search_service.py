@@ -7,6 +7,7 @@ from services.on_search_service import update_status  # Import the function from
 logger = logging.getLogger(__name__)
 
 async def perform_search(transaction_id: str):
+    logger.info(f"🔍 perform_search() CALLED with transaction_id: {transaction_id}")
     """Handles the search request and updates status"""
     try:
         request_body, auth_header = generate_auth_header()
