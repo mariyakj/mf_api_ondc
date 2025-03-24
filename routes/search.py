@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks
-from ..services.search_service import perform_search
+from services.search_service import perform_search
 import logging
 
 # Configure logging
