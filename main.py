@@ -16,9 +16,9 @@ app.add_middleware(
 )
 
 @app.get("/")
+@app.head("/")
 async def root():
-    """Root endpoint for health checks"""
-    return {"status": "OK", "service": "ONDC API Client"}
+    return {"message": "FastAPI ONDC Service Running"}
 
 # Include routers
 app.include_router(search.router)
