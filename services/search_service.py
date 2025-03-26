@@ -6,7 +6,7 @@ import base64
 import logging
 from uuid import uuid4
 from fastapi import HTTPException
-from blake3 import blake3
+import hashlib
 from auth import generate_auth_header
 from database import transaction_collection
 
@@ -93,8 +93,8 @@ async def search_request():
 
     # Generate BLAKE-512 Hash
     json_body = json.dumps(request_body, separators=(',', ':'))
-    hashed_body = blake3(json_body.encode()).hexdigest()
-    base64_hashed_body = base64.b64encode(bytes.fromhex(hashed_body)).decode()
+    hashed_body = hashlib.blake2b(json_body.encode(), digest_size=64).digest()
+    base64_hashed_body = base64.b64encode(hashed_body).decode()
 
     # Generate auth header
     auth_header = generate_auth_header(base64_hashed_body)
