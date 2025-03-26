@@ -7,12 +7,17 @@ router = APIRouter()
 async def search(background_tasks: BackgroundTasks):
     """Triggers the search process in the background without user_id"""
     try:
-        background_tasks.add_task(search_request)
-
-        return {
+        response = {
             "message": "Search started",
             "status": "processing"
         }
+        
+        print("🚀 API Response:", response)  # Print the response to the console
+        
+        background_tasks.add_task(search_request)
+        return response
 
     except Exception as e:
-        return {"error": str(e)}
+        error_response = {"error": str(e)}
+        print("❌ Error:", error_response)  # Print errors if any
+        return error_response
