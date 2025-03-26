@@ -5,3 +5,4 @@ pymongo
 httpx
 pynacl
 python-dotenv
+blake3
