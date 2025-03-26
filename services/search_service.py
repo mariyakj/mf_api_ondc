@@ -1,71 +1,121 @@
-import httpx
-import logging
 import json
+import time
+import uuid
+import httpx
+import base64
+import logging
+from uuid import uuid4
 from fastapi import HTTPException
+from blake3 import blake3
 from auth import generate_auth_header
-from services.on_search_service import update_status  # Update status in MongoDB
+from database import transaction_collection
+
+CONFIG = {
+    "API_ENDPOINTS": {
+        "SEARCH": "https://staging.gateway.proteantech.in/search"
+    }
+}
 
 logger = logging.getLogger(__name__)
 
-async def perform_search(transaction_id: str):
-    """Sends search request to ONDC and updates the status in MongoDB."""
-    
-    logger.info(f"🔍 perform_search() CALLED with transaction_id: {transaction_id}")
+# Default Request Body
+TEMPLATE_REQUEST_BODY = {
+        "context": {
+            "location": {"country": {"code": "IND"}, "city": {"code": "*"}},
+            "domain": "ONDC:FIS14",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
+            "bap_id": "staging.onesmf.com",
+            "bap_uri": "https://staging.onesmf.com",
+            "transaction_id": str(uuid.uuid4()),
+            "message_id": str(uuid.uuid4()),
+            "version": "2.0.0",
+            "ttl": "PT10M",
+            "action": "search"
+        },
+        "message": {
+            "intent": {
+                "category": {"descriptor": {"code": "MUTUAL_FUNDS"}},
+                "fulfillment": {
+                    "agent": {
+                        "organization": {
+                            "creds": [
+                                {
+                                    "id": "ARN-190417",
+                                    "type": "ARN"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "tags": [
+                    {
+                        "display": False,
+                        "descriptor": {
+                            "name": "BAP Terms of Engagement",
+                            "code": "BAP_TERMS"
+                        },
+                        "list": [
+                            {
+                                "descriptor": {
+                                    "name": "Static Terms (Transaction Level)",
+                                    "code": "STATIC_TERMS"
+                                },
+                                "value": "https://buyerapp.com/legal/ondc:fis14/static_terms?v=0.1"
+                            },
+                            {
+                                "descriptor": {
+                                    "name": "Offline Contract",
+                                    "code": "OFFLINE_CONTRACT"
+                                },
+                                "value": "true"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+
+async def search_request(user_id: str):
+    """Handles ONDC Search request."""
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+
+    transaction_id = str(uuid4()).lower()
+    message_id = str(uuid4()).lower()
+
+    request_body = {
+        **TEMPLATE_REQUEST_BODY,
+        "context": {
+            **TEMPLATE_REQUEST_BODY["context"],
+            "transaction_id": transaction_id,
+            "message_id": message_id,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        },
+    }
+
+    # Save transaction to MongoDB
+    transaction_collection.insert_one({"transactionId": transaction_id, "user": user_id, "timestamp": time.time()})
+
+    # Generate BLAKE-512 Hash
+    json_body = json.dumps(request_body, separators=(',', ':'))
+    hashed_body = blake3(json_body.encode()).hexdigest()
+    base64_hashed_body = base64.b64encode(bytes.fromhex(hashed_body)).decode()
+
+    # Generate auth header
+    auth_header = generate_auth_header(base64_hashed_body)
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": auth_header,
+    }
 
     try:
-        print("📢 Calling generate_auth_header()...")  # Debugging
-        request_body, auth_header = generate_auth_header()
-        
-        if not request_body or not auth_header:
-            logger.error("❌ ERROR: Auth header or request body missing!")
-            return {"error": "Auth header or request body is missing!"}
-
-        print("✅ generate_auth_header() executed successfully!")
-
-        headers = {
-            "Authorization": auth_header,
-            "Content-Type": "application/json"
-        }
-
-        logger.info(f"📝 Generated Headers: {headers}")
-        logger.info(f"📌 DEBUG: Generated Request Body: {json.dumps(request_body, indent=2)}")
-
-        # Update MongoDB status before sending request
-        await update_status(transaction_id, "search", "processing")
-
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://staging.gateway.proteantech.in/search",
-                json=request_body,
-                headers=headers,
-                timeout=30.0
-            )
-            response.raise_for_status()  # Raise error if response is 4xx/5xx
-
-        response_data = response.json()
-        logger.info(f"✅ Search response received for {transaction_id}: {json.dumps(response_data, indent=2)}")
-
-        # Update status in MongoDB
-        await update_status(transaction_id, "search", "waiting_for_on_search")
-
-        return {
-            "message": "Search request sent",
-            "transaction_id": transaction_id,
-            "status": "success",
-            "response": response_data
-        }
-
-    except httpx.TimeoutException:
-        logger.error(f"❌ Search request timed out for transaction {transaction_id}")
-        await update_status(transaction_id, "search", "error")
-        raise HTTPException(status_code=504, detail="Gateway timeout")
+            response = await client.post(CONFIG["API_ENDPOINTS"]["SEARCH"], json=request_body, headers=headers, timeout=30.0)
+            response.raise_for_status()
+            return response.json()
 
     except httpx.HTTPStatusError as e:
-        logger.error(f"❌ Search request failed for {transaction_id}: {e.response.status_code} - {e.response.text}")
-        await update_status(transaction_id, "search", "error")
+        logger.error(f"Search request failed: {e.response.status_code} - {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
-
-    except Exception as e:
-        logger.exception(f"❌ Unexpected error in search for transaction {transaction_id}: {str(e)}")
-        await update_status(transaction_id, "search", "error")
-        raise HTTPException(status_code=500, detail="Internal server error")
