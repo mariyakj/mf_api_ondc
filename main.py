@@ -10,6 +10,7 @@ app = FastAPI(title="ONDC Search API")
 app.include_router(search.router, prefix="/search", tags=["Search"])
 
 @app.get("/")
+@app.head("/")
 def home():
     return {"message": "ONDC Search API is running"}
 
