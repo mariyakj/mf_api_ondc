@@ -76,11 +76,8 @@ TEMPLATE_REQUEST_BODY = {
         }
     }
 
-async def search_request(user_id: str):
+async def search_request():
     """Handles ONDC Search request."""
-    if not user_id:
-        raise HTTPException(status_code=400, detail="User ID is required")
-
     transaction_id = str(uuid4()).lower()
     message_id = str(uuid4()).lower()
 
@@ -93,9 +90,6 @@ async def search_request(user_id: str):
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         },
     }
-
-    # Save transaction to MongoDB
-    transaction_collection.insert_one({"transactionId": transaction_id, "user": user_id, "timestamp": time.time()})
 
     # Generate BLAKE-512 Hash
     json_body = json.dumps(request_body, separators=(',', ':'))
@@ -119,3 +113,4 @@ async def search_request(user_id: str):
     except httpx.HTTPStatusError as e:
         logger.error(f"Search request failed: {e.response.status_code} - {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+

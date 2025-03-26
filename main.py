@@ -1,6 +1,5 @@
 import os
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from routes import search, on_search
 
