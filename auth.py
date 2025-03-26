@@ -18,9 +18,9 @@ def sign_message(message: str) -> str:
     return signature.decode()
 
 def generate_auth_header(hashed_body: str) -> str:
-    """Generates the authentication header."""
-    created = int(time.time()) - 10000
-    expires = int(time.time()) + CONFIG["SIGNATURE_VALIDITY"]
+    """Generates the authentication header with corrected timestamp and encoding."""
+    created = int(time.time())  # Corrected timestamp
+    expires = created + CONFIG["SIGNATURE_VALIDITY"]
 
     signing_string = f"(created): {created}\n(expires): {expires}\ndigest: BLAKE-512={hashed_body}"
     signature = sign_message(signing_string)
