@@ -16,6 +16,9 @@ app = FastAPI(title="ONDC Search API")
 app.include_router(search.router)
 logger.info("🔗 Search router registered")
 
+app.include_router(on_search.router, prefix="/on_search", tags=["on_search"])
+logger.info("🔗 On_search router registered")
+
 @app.on_event("startup")
 async def startup_event():
     """Runs when FastAPI starts up"""
