@@ -1,26 +1,27 @@
-from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
-
+from fastapi import APIRouter, Request, HTTPException
+import logging
 from services.on_search_service import store_on_search_response
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/on_search")
-async def on_search(request: Request, background_tasks: BackgroundTasks):
+@router.post("/")
+async def on_search_callback(request: Request):
+    """Handles on_search callbacks from ONDC gateway"""
     try:
-        # Check if request body exists
+        # Validate request
         if request.headers.get("content-length") == "0":
             raise HTTPException(status_code=400, detail="Empty request body")
 
-        response_data = await request.json()
+        # Get request body
+        data = await request.json()
+        logger.info(f"Received on_search callback with transaction_id: {data.get('context', {}).get('transaction_id')}")
 
-        # Validate required fields
-        if "context" not in response_data or "transaction_id" not in response_data["context"]:
-            raise HTTPException(status_code=400, detail="Missing 'context' or 'transaction_id' in request body")
+        # Store response in database
+        await store_on_search_response(data)
+        
+        return {"status": "success"}
 
-        # Process response in the background
-        background_tasks.add_task(store_on_search_response, response_data)
-
-        return {"message": "on_search response processing", "transaction_id": response_data["context"]["transaction_id"]}
-    
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Error processing on_search callback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

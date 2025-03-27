@@ -24,12 +24,17 @@ async def startup_event():
     """Runs when FastAPI starts up"""
     logger.info("🚀 Starting automatic search on startup...")
     try:
+        # Initialize database connection
+        from services.on_search_service import client
+        await client.admin.command('ping')
+        logger.info("✅ MongoDB connection established")
+
         # Run search request once
         await search_request()
         logger.info("✅ Initial search completed")
     except Exception as e:
-        logger.error(f"❌ Error in startup search: {str(e)}")
-
+        logger.error(f"❌ Error in startup: {str(e)}")
+        
 @app.get("/")
 @app.head("/")
 def home():
