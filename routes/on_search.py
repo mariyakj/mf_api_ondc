@@ -5,7 +5,7 @@ from services.on_search_service import store_on_search_response
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/")
+@router.post("/on_search")
 async def on_search_callback(request: Request):
     """Handles on_search callbacks from ONDC gateway"""
     try:

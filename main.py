@@ -16,7 +16,7 @@ app = FastAPI(title="ONDC Search API")
 app.include_router(search.router)
 logger.info("🔗 Search router registered")
 
-app.include_router(on_search.router, prefix="/on_search", tags=["on_search"])
+app.include_router(on_search.router)
 logger.info("🔗 On_search router registered")
 
 @app.on_event("startup")
@@ -34,7 +34,7 @@ async def startup_event():
         logger.info("✅ Initial search completed")
     except Exception as e:
         logger.error(f"❌ Error in startup: {str(e)}")
-        
+
 @app.get("/")
 @app.head("/")
 def home():
