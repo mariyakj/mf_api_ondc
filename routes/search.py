@@ -3,7 +3,7 @@ from services.search_service import search_request
 
 router = APIRouter()
 
-@router.post("/")
+@router.post("/search")
 async def search(background_tasks: BackgroundTasks):
     """Triggers the search process in the background without user_id"""
     try:

@@ -24,23 +24,11 @@ async def startup_event():
     """Runs when FastAPI starts up"""
     logger.info("🚀 Starting automatic search on startup...")
     try:
-        # Create background task for search
-        asyncio.create_task(periodic_search())
+        # Run search request once
+        await search_request()
+        logger.info("✅ Initial search completed")
     except Exception as e:
-        logger.error(f"❌ Error starting automatic search: {str(e)}")
-
-async def periodic_search():
-    """Performs search periodically"""
-    while True:
-        try:
-            logger.info("📡 Initiating automatic search...")
-            await search_request()
-            # Wait for 5 minutes before next search
-            await asyncio.sleep(300)
-        except Exception as e:
-            logger.error(f"❌ Error in automatic search: {str(e)}")
-            # Wait for 1 minute before retry on error
-            await asyncio.sleep(60)
+        logger.error(f"❌ Error in startup search: {str(e)}")
 
 @app.get("/")
 @app.head("/")
